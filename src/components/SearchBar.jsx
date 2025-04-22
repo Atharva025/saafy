@@ -108,7 +108,7 @@ function SearchBar({ onSearchResults }) {
                         onFocus={() => setHasFocus(true)}
                         onBlur={() => setTimeout(() => setHasFocus(false), 200)}
                         placeholder="Search for songs, artists, or albums..."
-                        className="w-full bg-white dark:bg-gray-800 py-3 pl-11 pr-24 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 shadow-sm"
+                        className="w-full text-white bg-white dark:bg-gray-800 py-3 pl-11 pr-24 rounded-lg border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 shadow-sm"
                     />
 
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
