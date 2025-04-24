@@ -30,7 +30,7 @@ function SearchBar({ onSearchResults }) {
 
         setIsLoading(true);
         try {
-            const response = await axios.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(trimmedQuery)}`);
+            const response = await axios.get(`https://saafy-api.vercel.app/api/search/songs?query=${encodeURIComponent(trimmedQuery)}`);
 
             if (response.data && response.data.data && response.data.data.results) {
                 const formattedSongs = response.data.data.results.map(song => ({

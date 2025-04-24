@@ -24,7 +24,7 @@ function MusicPlayer() {
     // Categories for music selection
     const categories = [
         { id: 'hindi', name: 'Hindi' },
-        { id: 'english', name: 'English', icon: '🌟' },
+        { id: 'english', name: 'English' },
         { id: 'punjabi', name: 'Punjabi' },
         { id: 'tamil', name: 'Tamil' },
         { id: 'telugu', name: 'Telugu' }
@@ -61,27 +61,170 @@ function MusicPlayer() {
     };
 
     // Load trending tracks on component mount or category change
+    // Updated loadTrendingTracks function focusing exclusively on playlist URLs
+
+    // Load trending tracks on component mount or category change
     useEffect(() => {
         const loadTrendingTracks = async () => {
             try {
                 setIsLoadingTrending(true);
 
-                const searchTerms = {
-                    hindi: 'bollywood hits',
-                    english: 'pop hits',
-                    punjabi: 'punjabi bhangra',
-                    tamil: 'tamil hits',
-                    telugu: 'telugu hits'
+                // Predefined playlist URLs for each category
+                const playlistUrls = {
+                    hindi: 'https://www.jiosaavn.com/featured/trending-hits/GVABefAdtVAZNLR,rP3WSg__',
+                    english: 'https://www.jiosaavn.com/featured/english-viral-hits/pm49jiq,CNs_',
+                    punjabi: 'https://www.jiosaavn.com/featured/punjabi-trending-hits/vInkpyiMhI6qKl4yv5iIvA__',
+                    tamil: 'https://www.jiosaavn.com/featured/trending-pop-tamil/5z8vKjNnhmIGSw2I1RxdhQ__',
+                    telugu: 'https://www.jiosaavn.com/featured/-trending-tracks/FWB5iMCkujuQbUI04mhbCA__'
                 };
 
-                const searchTerm = searchTerms[activeCategory] || 'popular songs';
-                const response = await axios.get(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(searchTerm)}`);
+                // Get playlist URL for active category
+                const playlistUrl = playlistUrls[activeCategory];
 
-                if (response.data && response.data.data && response.data.data.results) {
-                    const formattedSongs = formatSongs(response.data.data.results);
-                    const playableTracks = formattedSongs.filter(track => track.download_url);
-                    setTrendingTracks(playableTracks);
-                } else {
+                if (playlistUrl) {
+                    console.log(`Fetching trending ${activeCategory} songs from playlist:`, playlistUrl);
+
+                    // English playlist needs special handling
+                    if (activeCategory === 'english') {
+                        // For English, use a more reliable fixed playlist token instead of the URL
+                        const playlistId = 'pm49jiq,CNs_';
+
+                        try {
+                            // First try to get a better playlist ID through search
+                            const searchResponse = await axios.get(`https://saafy-api.vercel.app/api/search?query=${encodeURIComponent('english popular hits')}`);
+
+                            if (searchResponse.data?.success && searchResponse.data.data?.topQuery?.results) {
+                                const topQueryResults = searchResponse.data.data.topQuery.results;
+                                const relevantPlaylist = topQueryResults.find(item =>
+                                    item.type === 'playlist' &&
+                                    item.title.toLowerCase().includes('english')
+                                );
+
+                                if (relevantPlaylist) {
+                                    console.log('Found English playlist from search:', relevantPlaylist.title);
+
+                                    // Extract the token from the URL
+                                    const playlistUrlParts = relevantPlaylist.url.split('/');
+                                    const playlistToken = playlistUrlParts[playlistUrlParts.length - 1];
+
+                                    const idResponse = await axios.get(`https://saafy-api.vercel.app/api/playlists?id=${playlistToken}`);
+
+                                    if (idResponse.data?.data?.songs) {
+                                        console.log('English playlist songs found:', idResponse.data.data.songs.length);
+                                        const formattedSongs = formatSongs(idResponse.data.data.songs);
+
+                                        // Apply additional English filter
+                                        const playableTracks = formattedSongs.filter(track =>
+                                            track.download_url &&
+                                            /^[a-zA-Z0-9\s\W]+$/.test(track.name)
+                                        );
+
+                                        if (playableTracks.length > 0) {
+                                            console.log('English playable tracks:', playableTracks.length);
+                                            setTrendingTracks(playableTracks);
+                                            setIsLoadingTrending(false);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // If dynamic method fails, fall back to a known working English playlist ID
+                            const backupResponse = await axios.get('https://saafy-api.vercel.app/api/playlists?id=1083318977');
+
+                            if (backupResponse.data?.data?.songs) {
+                                console.log('Backup English playlist songs found:', backupResponse.data.data.songs.length);
+                                const formattedSongs = formatSongs(backupResponse.data.data.songs);
+                                const playableTracks = formattedSongs.filter(track => track.download_url);
+
+                                if (playableTracks.length > 0) {
+                                    setTrendingTracks(playableTracks);
+                                    setIsLoadingTrending(false);
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error with English playlist:', error);
+                        }
+                    } else {
+                        // For non-English playlists, first try the link approach
+                        try {
+                            const encodedUrl = encodeURIComponent(playlistUrl);
+                            const playlistResponse = await axios.get(`https://saafy-api.vercel.app/api/playlists?link=${encodedUrl}`);
+
+                            if (playlistResponse.data?.data?.songs && playlistResponse.data.data.songs.length > 0) {
+                                console.log('Playlist songs found:', playlistResponse.data.data.songs.length);
+                                const formattedSongs = formatSongs(playlistResponse.data.data.songs);
+                                const playableTracks = formattedSongs.filter(track => track.download_url);
+
+                                if (playableTracks.length > 0) {
+                                    setTrendingTracks(playableTracks);
+                                    setIsLoadingTrending(false);
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error with direct playlist URL:', error);
+                        }
+
+                        // If link approach fails, try the ID approach
+                        try {
+                            const urlParts = playlistUrl.split('/');
+                            const rawPlaylistId = urlParts[urlParts.length - 1];
+
+                            const idResponse = await axios.get(`https://saafy-api.vercel.app/api/playlists?id=${rawPlaylistId}`);
+
+                            if (idResponse.data?.data?.songs) {
+                                console.log('Playlist songs found using ID:', idResponse.data.data.songs.length);
+                                const formattedSongs = formatSongs(idResponse.data.data.songs);
+                                const playableTracks = formattedSongs.filter(track => track.download_url);
+
+                                if (playableTracks.length > 0) {
+                                    setTrendingTracks(playableTracks);
+                                    setIsLoadingTrending(false);
+                                    return;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error fetching by ID:', error);
+                        }
+                    }
+                }
+
+                // If we're still here, all playlist approaches failed
+                // Use a last resort language-specific search
+                console.log('All playlist methods failed, trying language-specific search');
+
+                try {
+                    // Last resort approach with language in the query
+                    const languageTerms = {
+                        hindi: 'hindi songs trending',
+                        english: 'english songs popular',
+                        punjabi: 'punjabi songs latest',
+                        tamil: 'tamil songs trending',
+                        telugu: 'telugu songs hits'
+                    };
+
+                    const finalResponse = await axios.get(`https://saafy-api.vercel.app/api/search/songs?query=${encodeURIComponent(languageTerms[activeCategory])}`);
+
+                    if (finalResponse.data?.data?.results) {
+                        console.log('Language-specific search found:', finalResponse.data.data.results.length);
+                        const formattedSongs = formatSongs(finalResponse.data.data.results);
+
+                        // Apply language filter for English
+                        const playableTracks = activeCategory === 'english'
+                            ? formattedSongs.filter(track =>
+                                track.download_url &&
+                                /^[a-zA-Z0-9\s\W]+$/.test(track.name))
+                            : formattedSongs.filter(track => track.download_url);
+
+                        console.log('Final playable tracks:', playableTracks.length);
+                        setTrendingTracks(playableTracks);
+                    } else {
+                        setTrendingTracks([]);
+                    }
+                } catch (error) {
+                    console.error('Error in final fallback approach:', error);
                     setTrendingTracks([]);
                 }
             } catch (error) {
@@ -130,7 +273,7 @@ function MusicPlayer() {
             try {
                 setIsLoadingArtistTracks(true);
 
-                const response = await axios.get(`https://saavn.dev/api/artists/${currentArtist.id}/songs`);
+                const response = await axios.get(`https://saafy-api.vercel.app/api/artists/${currentArtist.id}/songs`);
 
                 if (response.data && response.data.data && response.data.data.songs) {
                     const formattedSongs = formatSongs(response.data.data.songs);

@@ -91,14 +91,7 @@ function VolumeControl() {
                         aria-label="Volume"
                     />
 
-                    {/* Hoverable volume thumb */}
-                    <div
-                        className={`absolute top-1/2 -mt-2 w-4 h-4 rounded-full bg-indigo-500 ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                            } transition-opacity shadow-md`}
-                        style={{
-                            left: `calc(${volume * 100}% - 8px)`,
-                        }}
-                    />
+                    
                 </div>
             </div>
 
