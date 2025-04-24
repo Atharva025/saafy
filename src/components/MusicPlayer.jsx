@@ -7,7 +7,10 @@ import FeaturedTracks from './FeaturedTracks';
 import PlayerControls from './PlayerControls';
 import Queue from './Queue';
 import VolumeControl from './VolumeControl';
-import { Music, Settings, Headphones, Search, Clock, Sparkles, X } from 'lucide-react';
+import Playlists from './Playlists';
+import PlaylistDetail from './PlaylistDetail';
+import { usePlaylist } from '../context/PlaylistContext';
+import { Music, Settings, Headphones, Search, Clock, Sparkles, X, ListMusic } from 'lucide-react';
 
 function MusicPlayer() {
     const [searchResults, setSearchResults] = useState([]);
@@ -20,14 +23,16 @@ function MusicPlayer() {
     const [activeCategory, setActiveCategory] = useState('english');
     const [focusMode, setFocusMode] = useState(false);
     const [showQueue, setShowQueue] = useState(false);
+    const { activePlaylist } = usePlaylist();
 
-    // Categories for music selection
+    // Categories for music selection - now includes playlists
     const categories = [
         { id: 'hindi', name: 'Hindi' },
         { id: 'english', name: 'English' },
         { id: 'punjabi', name: 'Punjabi' },
         { id: 'tamil', name: 'Tamil' },
-        { id: 'telugu', name: 'Telugu' }
+        { id: 'telugu', name: 'Telugu' },
+        { id: 'playlists', name: 'My Playlists', icon: <ListMusic size={16} className="mr-1" /> }
     ];
 
     // Format songs from API response
@@ -61,11 +66,14 @@ function MusicPlayer() {
     };
 
     // Load trending tracks on component mount or category change
-    // Updated loadTrendingTracks function focusing exclusively on playlist URLs
-
-    // Load trending tracks on component mount or category change
     useEffect(() => {
         const loadTrendingTracks = async () => {
+            // Skip loading tracks when in playlists category
+            if (activeCategory === 'playlists') {
+                setIsLoadingTrending(false);
+                return;
+            }
+
             try {
                 setIsLoadingTrending(true);
 
@@ -374,7 +382,7 @@ function MusicPlayer() {
                                                 <motion.button
                                                     key={category.id}
                                                     onClick={() => setActiveCategory(category.id)}
-                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeCategory === category.id
+                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center ${activeCategory === category.id
                                                         ? 'bg-indigo-500 text-white'
                                                         : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                                                         }`}
@@ -382,67 +390,83 @@ function MusicPlayer() {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     transition={{ delay: 0.1 + index * 0.05 }}
                                                 >
-                                                    {category.icon && <span className="mr-2">{category.icon}</span>}
+                                                    {category.icon}
                                                     {category.name}
                                                 </motion.button>
                                             ))}
                                         </div>
 
-                                        <div className="flex justify-between items-center mt-8 mb-4">
-                                            <h2 className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
-                                                <Sparkles className="text-teal-400" size={20} />
-                                                <span>
-                                                    {categories.find(c => c.id === activeCategory)?.name || ''} Trending
-                                                </span>
-                                            </h2>
-                                        </div>
+                                        {activeCategory !== 'playlists' && (
+                                            <div className="flex justify-between items-center mt-8 mb-4">
+                                                <h2 className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
+                                                    <Sparkles className="text-teal-400" size={20} />
+                                                    <span>
+                                                        {categories.find(c => c.id === activeCategory)?.name || ''} Trending
+                                                    </span>
+                                                </h2>
+                                            </div>
+                                        )}
                                     </motion.div>
 
-                                    <AnimatePresence mode="wait">
-                                        {isLoadingTrending ? (
+                                    {/* Show playlists when that category is selected */}
+                                    {activeCategory === 'playlists' ? (
+                                        <AnimatePresence mode="wait">
                                             <motion.div
-                                                key="loading"
+                                                key="playlists"
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 flex flex-col items-center justify-center min-h-[200px]"
                                             >
-                                                <div className="w-10 h-10 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin mb-4"></div>
-                                                <p className="text-indigo-500 dark:text-indigo-400">Discovering trending tracks...</p>
+                                                {activePlaylist ? <PlaylistDetail /> : <Playlists />}
                                             </motion.div>
-                                        ) : (
-                                            <motion.div
-                                                key="content"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                            >
-                                                {trendingTracks.length > 0 ? (
-                                                    <div className="space-y-8">
-                                                        <FeaturedTracks tracks={trendingTracks.slice(0, 3)} />
+                                        </AnimatePresence>
+                                    ) : (
+                                        <AnimatePresence mode="wait">
+                                            {isLoadingTrending ? (
+                                                <motion.div
+                                                    key="loading"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 flex flex-col items-center justify-center min-h-[200px]"
+                                                >
+                                                    <div className="w-10 h-10 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin mb-4"></div>
+                                                    <p className="text-indigo-500 dark:text-indigo-400">Discovering trending tracks...</p>
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div
+                                                    key="content"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                >
+                                                    {trendingTracks.length > 0 ? (
+                                                        <div className="space-y-8">
+                                                            <FeaturedTracks tracks={trendingTracks.slice(0, 3)} />
 
-                                                        {trendingTracks.length > 3 && (
-                                                            <div className="mt-6">
-                                                                <div className="flex items-center mb-4">
-                                                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">More Tracks</h3>
-                                                                    <div className="ml-auto">
-                                                                        <div className="h-[1px] w-16 bg-gradient-to-r from-indigo-500 to-transparent"></div>
+                                                            {trendingTracks.length > 3 && (
+                                                                <div className="mt-6">
+                                                                    <div className="flex items-center mb-4">
+                                                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">More Tracks</h3>
+                                                                        <div className="ml-auto">
+                                                                            <div className="h-[1px] w-16 bg-gradient-to-r from-indigo-500 to-transparent"></div>
+                                                                        </div>
                                                                     </div>
+                                                                    <TrackList tracks={trendingTracks.slice(3)} />
                                                                 </div>
-                                                                <TrackList tracks={trendingTracks.slice(3)} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-10 text-center">
-                                                        <Music size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-500 opacity-50" />
-                                                        <p className="text-gray-600 dark:text-gray-400 mb-2">No tracks found.</p>
-                                                        <p className="text-gray-500 dark:text-gray-500 text-sm">Try a different category or search for something specific.</p>
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-10 text-center">
+                                                            <Music size={40} className="mx-auto mb-4 text-gray-400 dark:text-gray-500 opacity-50" />
+                                                            <p className="text-gray-600 dark:text-gray-400 mb-2">No tracks found.</p>
+                                                            <p className="text-gray-500 dark:text-gray-500 text-sm">Try a different category or search for something specific.</p>
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    )}
                                 </section>
                             )}
 
@@ -530,49 +554,36 @@ function MusicPlayer() {
 
                                         {currentArtist && (
                                             <motion.div
-                                                className="mt-10"
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: 0.3 }}
+                                                className="mt-10"
                                             >
-                                                <div className="flex items-center mb-5">
-                                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                                        More from {currentArtist.name}
+                                                <div className="flex items-center mb-4">
+                                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                                                        <Music size={18} className="text-teal-400 mr-2" />
+                                                        {currentArtist.name} Tracks
                                                     </h3>
                                                     <div className="ml-auto">
-                                                        <div className="h-[1px] w-16 bg-gradient-to-r from-indigo-500 to-transparent"></div>
+                                                        <button
+                                                            className="text-indigo-500 dark:text-indigo-400 text-sm hover:underline"
+                                                            onClick={() => setCurrentArtist(null)}
+                                                        >
+                                                            Clear
+                                                        </button>
                                                     </div>
                                                 </div>
 
-                                                <AnimatePresence mode="wait">
-                                                    {isLoadingArtistTracks ? (
-                                                        <motion.div
-                                                            key="loading"
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            exit={{ opacity: 0 }}
-                                                            className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 flex flex-col items-center justify-center min-h-[100px]"
-                                                        >
-                                                            <div className="w-6 h-6 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin mb-3"></div>
-                                                            <p className="text-indigo-500 dark:text-indigo-400 text-sm">Loading artist tracks...</p>
-                                                        </motion.div>
-                                                    ) : (
-                                                        <motion.div
-                                                            key="content"
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            exit={{ opacity: 0 }}
-                                                        >
-                                                            {artistTracks.length > 0 ? (
-                                                                <TrackList tracks={artistTracks} />
-                                                            ) : (
-                                                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-                                                                    <p className="text-gray-600 dark:text-gray-400">No additional tracks found for this artist.</p>
-                                                                </div>
-                                                            )}
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
+                                                {isLoadingArtistTracks ? (
+                                                    <div className="flex items-center justify-center py-10">
+                                                        <div className="w-8 h-8 border-t-2 border-b-2 border-indigo-500 rounded-full animate-spin"></div>
+                                                    </div>
+                                                ) : artistTracks.length > 0 ? (
+                                                    <TrackList tracks={artistTracks} />
+                                                ) : (
+                                                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
+                                                        <p className="text-gray-600 dark:text-gray-400">No additional tracks found for this artist.</p>
+                                                    </div>
+                                                )}
                                             </motion.div>
                                         )}
                                     </motion.section>
@@ -580,48 +591,50 @@ function MusicPlayer() {
                             )}
                         </div>
 
-                        <AnimatePresence>
-                            <motion.div
-                                key="queue-sidebar"
-                                className={`lg:block ${showQueue ? 'fixed inset-0 z-50 bg-black bg-opacity-30 lg:bg-opacity-0 lg:static' : 'hidden'}`}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.4 }}
-                            >
-                                <div className={`h-full max-h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 lg:bg-transparent dark:lg:bg-transparent p-4 lg:p-0 transition-all duration-300 ease-in-out shadow-lg lg:shadow-none overflow-hidden ${showQueue ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
-                                    }`}>
-                                    <div className="sticky top-0">
-                                        <div className="flex justify-between items-center lg:hidden mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Queue</h3>
-                                            <button
-                                                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
-                                                onClick={toggleQueue}
-                                                aria-label="Close queue"
-                                            >
-                                                <X size={18} />
-                                            </button>
-                                        </div>
-
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.2 }}
+                        {/* Right sidebar with Queue */}
+                        <div className={`lg:block ${showQueue ? 'block fixed inset-0 z-30 bg-gray-900/50 lg:bg-transparent lg:static' : 'hidden'}`}>
+                            <div className="h-full lg:h-auto p-4 lg:p-0">
+                                <div className="bg-white dark:bg-gray-800 h-full lg:h-auto rounded-lg shadow relative max-w-md mx-auto lg:mx-0 overflow-hidden flex flex-col">
+                                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Playing Queue</h3>
+                                        <button
+                                            className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+                                            onClick={toggleQueue}
                                         >
-                                            <Queue />
+                                            <X size={18} className="text-gray-500 dark:text-gray-400" />
+                                        </button>
+                                    </div>
 
-                                            <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                                                <VolumeControl />
-                                            </div>
-                                        </motion.div>
+                                    <div className="flex-1 overflow-y-auto p-4">
+                                        <Queue />
+                                    </div>
+
+                                    <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+                                        <VolumeControl />
                                     </div>
                                 </div>
-                            </motion.div>
-                        </AnimatePresence>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <PlayerControls focusMode={focusMode} toggleQueue={toggleQueue} />
+            {/* Player Controls - Fixed at the bottom */}
+            <motion.div
+                className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-20"
+                initial={{ y: 100 }}
+                animate={{ y: 0 }}
+                transition={{ delay: 0.3 }}
+            >
+                <div className="max-w-7xl mx-auto">
+                    <PlayerControls
+                        onToggleFocusMode={toggleFocusMode}
+                        focusMode={focusMode}
+                        onToggleQueue={toggleQueue}
+                        showQueue={showQueue}
+                    />
+                </div>
+            </motion.div>
         </div>
     );
 }

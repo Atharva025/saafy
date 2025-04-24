@@ -1,12 +1,16 @@
 import { useQueue } from '../context/QueueContext';
-import { Play, MoreHorizontal, Plus, Music, ListPlus } from 'lucide-react';
+import { Play, MoreHorizontal, Plus, Music, ListPlus, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import { usePlaylist } from '../context/PlaylistContext';
+import PlaylistModal from './PlaylistModal';
 
 function TrackList({ tracks, emptyMessage = "No tracks found." }) {
     const { playTrack, addToQueue, addNextInQueue, currentTrack, isPlaying } = useQueue();
     const [activeTrackId, setActiveTrackId] = useState(null);
     const [showDropdown, setShowDropdown] = useState(null);
+    const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+    const [selectedTrack, setSelectedTrack] = useState(null);
 
     if (!tracks || tracks.length === 0) {
         return (
@@ -38,6 +42,12 @@ function TrackList({ tracks, emptyMessage = "No tracks found." }) {
     // Close dropdown when clicking outside
     const closeDropdown = () => {
         setShowDropdown(null);
+    };
+
+    const handleAddToPlaylist = (track) => {
+        setSelectedTrack(track);
+        setShowPlaylistModal(true);
+        closeDropdown();
     };
 
     return (
@@ -146,6 +156,16 @@ function TrackList({ tracks, emptyMessage = "No tracks found." }) {
                                 <motion.button
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
+                                    onClick={() => handleAddToPlaylist(track)}
+                                    className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-pink-500 dark:hover:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-all rounded-full"
+                                    title="Add to playlist"
+                                >
+                                    <Heart size={16} />
+                                </motion.button>
+
+                                <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
                                     onClick={() => addNextInQueue(track)}
                                     className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all rounded-full"
                                     title="Play next"
@@ -222,6 +242,15 @@ function TrackList({ tracks, emptyMessage = "No tracks found." }) {
                                                                 Add to queue
                                                             </button>
                                                         </li>
+                                                        <li>
+                                                            <button
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100/80 dark:hover:bg-gray-700/80 transition-colors flex items-center text-gray-700 dark:text-gray-300"
+                                                                onClick={() => handleAddToPlaylist(track)}
+                                                            >
+                                                                <Heart size={14} className="mr-2" />
+                                                                Add to playlist
+                                                            </button>
+                                                        </li>
                                                     </ul>
                                                 </motion.div>
                                                 <motion.div
@@ -240,6 +269,19 @@ function TrackList({ tracks, emptyMessage = "No tracks found." }) {
                     );
                 })}
             </ul>
+
+            {/* Playlist Modal */}
+            {selectedTrack && (
+                <PlaylistModal
+                    isOpen={showPlaylistModal}
+                    onClose={() => {
+                        setShowPlaylistModal(false);
+                        setSelectedTrack(null);
+                    }}
+                    track={selectedTrack}
+                    mode="add"
+                />
+            )}
         </motion.div>
     );
 }
